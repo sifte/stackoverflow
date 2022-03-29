@@ -1,4 +1,5 @@
 from asyncio import TimeoutError
+from typing import Any
 
 from discord import Color, Embed, Message
 from discord.ext.commands import Cog, command, Context
@@ -10,7 +11,7 @@ from ext.views import ConfirmView, QuestionView
 from discord.utils import utcnow
 
 TIMEOUT = 120
-CHAR_LIMIT = 1501
+CHAR_LIMIT = 1000
 
 class Meta(Cog):
     """
@@ -29,14 +30,24 @@ class Meta(Cog):
         return self.bot.db['TESTING']['user'] # change to ['stackoverflow']['users']
 
     async def ensure_user_exists(self, user_id: int) -> None:
+
+        """
+        Ensure that a user exists in the database.
+
+        Parameters
+        ----------
+        user_id : int
+            The user's ID.
+        """
+        
         user = await self.user_db.find_one({'_id': user_id})
 
         if user is None:
 
-            payload = {
+            payload: dict[str, Any] = {
                 '_id': user_id,
-                'questions_asked': [], # array of question ids
-                'questions_answered': [], # array of question ids
+                'questions_asked': [], 
+                'questions_answered': [], 
             }
             await self.user_db.insert_one(payload)
             return
@@ -46,10 +57,21 @@ class Meta(Cog):
 
     async def post_question(self, user_id: int, data: dict) -> None:
 
-        user = await self.ensure_user_exists(user_id)
+        """
+        Post a question.
+
+        Parameters
+        ----------
+        user_id : int
+            The user id of the user who asked the question.
+        data : dict
+            The data to be posted.
+        """
+
+        user = await self.ensure_user_exists(user_id) # ensure the user exists
         question_id = len(await self.db.find().to_list(100000)) + 1
 
-        payload = {
+        payload: dict[str, Any] = {
             '_id': question_id,
             'user_id': user_id,
             'title': data['title'],
@@ -60,7 +82,7 @@ class Meta(Cog):
             'answers': [],
             'views': 0,
             'date': int(utcnow().timestamp()),
-        }
+        } 
 
         await self.db.insert_one(payload)
 
@@ -70,6 +92,18 @@ class Meta(Cog):
         return
 
     async def prepare_message(self, ctx: Context, data: dict) -> Embed:
+
+        """
+        Prepare a message for embedding.
+
+        Parameters
+        ----------
+        ctx : Context
+            The context of the command.
+        data : dict
+            The data to be prepared.
+        """
+
         embed = Embed(
             title=data['title'],
             description=data['body'],
@@ -80,6 +114,10 @@ class Meta(Cog):
 
     @command(name='ask')
     async def ask(self, ctx: Context) -> None:
+
+        """
+        Ask a question.
+        """
         
         def check(message: Message) -> bool:
             return message.author == ctx.author and message.channel == ctx.channel
@@ -135,7 +173,7 @@ class Meta(Cog):
             return await view.on_timeout()
 
         if view.value:
-            data = {
+            data: dict[str, Any] = {
                 'title': title.content,
                 'body': body.content,
                 'tags': tags.content.split(',')
@@ -148,6 +186,15 @@ class Meta(Cog):
             return
 
     async def prepare_question(self, question: dict) -> Embed:
+
+        """
+        Prepare a question for embedding.
+        
+        Parameters
+        ----------
+        question : dict
+            The question to be prepared.
+        """
 
         user = self.bot.get_user(question['user_id']) or await self.bot.get_user(question['user_id'])
 
@@ -175,8 +222,12 @@ class Meta(Cog):
         return embed
 
 
-    @command(name='question') 
-    async def question(self, ctx: Context, question_id: int) -> None:
+    @command(name='view-question') 
+    async def view_question(self, ctx: Context, question_id: int) -> None:
+
+        """
+        View a question.
+        """
 
         question = await self.db.find_one({'_id': question_id})
 
@@ -191,5 +242,57 @@ class Meta(Cog):
 
         view.message = await ctx.send(embed=embed, view=view)
 
+    @command(name='answer')
+    async def answer(self, ctx: Context, question_id: int) -> None: # make question_id have a default value? button - select 25 latest
+
+        """
+        Answer a question.
+        """
+
+        question = await self.db.find_one({'_id': question_id})
+
+        if question is None:
+            return await ctx.send('Question not found.')
+        
+        def check(message: Message) -> bool:
+            return message.author == ctx.author and message.channel == ctx.channel
+
+        await ctx.send(f'Hello {ctx.author.mention}. What would you like the title of the answer to be?')
+
+        try:
+            title = await self.bot.wait_for('message', check=check, timeout=TIMEOUT)
+        except TimeoutError:
+            return await ctx.send('You took too long to respond. Goodbye!')
+
+        else:
+            if len(title.content) >= CHAR_LIMIT:
+                return await ctx.reply(f'The title of the answer is too long. The maximum is {CHAR_LIMIT:,} characters.')
+        
+        await ctx.send(f'Great! What would you like the body of the answer to be?')
+
+        try:
+            body = await self.bot.wait_for('message', check=check, timeout=TIMEOUT)
+        except TimeoutError:
+            return await ctx.send('You took too long to respond. Goodbye!')
+        
+        else:
+            if len(body.content) >= CHAR_LIMIT:
+                return await ctx.reply(f'The body of the answer is too long. The maximum is {CHAR_LIMIT:,} characters.')
+
+        payload = {
+            'title': title.content,
+            'body': body.content,
+            'user_id': ctx.author.id,
+            'date': int(utcnow().timestamp()),
+            }
+
+        question['answers'].append(payload)
+
+        await self.db.update_one({'_id': question_id}, {'$set': {'answers': question['answers']}})
+
+        await ctx.send('Answer posted!')
+
+
 async def setup(bot: StackBot) -> None:
+    print('Loaded: Meta')
     await bot.add_cog(Meta(bot))
