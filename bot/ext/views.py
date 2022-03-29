@@ -20,7 +20,7 @@ class ConfirmView(ui.View):
         return await self.message.edit(content='You took too long. Goodbye!', view=self, embed=None)
 
     @ui.button(label='Confirm', style=ButtonStyle.green)
-    async def confirm(self, button: ui.Button, interaction: Interaction) -> None:
+    async def confirm(self, interaction: Interaction, button: ui.Button) -> None:
 
         for item in self.children:
             item.disabled = True
@@ -32,7 +32,7 @@ class ConfirmView(ui.View):
 
 
     @ui.button(label='Cancel', style=ButtonStyle.red)
-    async def cancel(self, button: ui.Button, interaction: Interaction) -> None:
+    async def cancel(self, interaction: Interaction, button: ui.Button) -> None:
         
         for item in self.children:
             item.disabled = True
@@ -56,7 +56,7 @@ class QuestionView(ui.View):
         return await self.message.edit(view=self)
 
     @ui.button(label='Upvote', style=ButtonStyle.green)
-    async def upvote(self, button: ui.Button, interaction: Interaction) -> None:
+    async def upvote(self, interaction: Interaction, button: ui.Button) -> None:
         question = await self.db.find_one({'_id': self.question_id})
 
         if question is None:
@@ -76,7 +76,7 @@ class QuestionView(ui.View):
 
 
     @ui.button(label='Downvote', style=ButtonStyle.red)
-    async def downvote(self, button: ui.Button, interaction: Interaction) -> None:
+    async def downvote(self, interaction: Interaction, button: ui.Button) -> None:
         question = await self.db.find_one({'_id': self.question_id})
 
         if question is None:
