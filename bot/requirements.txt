@@ -2,3 +2,4 @@ git+https://github.com/Rapptz/discord.py/
 git+https://github.com/Gorialis/jishaku/
 motor
 dnspython
+python-dotenv
