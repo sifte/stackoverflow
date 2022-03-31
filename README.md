@@ -1,3 +1,3 @@
 ## Stackoverflow Bot
 
-Imagine stackoverflow as a discord bot.. ✨
+Imagine stackoverflow as a discord bot.. 😳✨
