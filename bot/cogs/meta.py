@@ -30,7 +30,6 @@ class Meta(Cog):
         return self.bot.db['stackoverflow']['users'] # change to ['stackoverflow']['users']
 
     async def ensure_user_exists(self, user_id: int) -> None:
-
         """
         Ensure that a user exists in the database.
         """
@@ -51,7 +50,6 @@ class Meta(Cog):
             return user
 
     async def post_question(self, user_id: int, data: dict) -> None:
-
         """
         Posts a question.
         """
@@ -80,7 +78,6 @@ class Meta(Cog):
         return
 
     async def prepare_message(self, ctx: Context, data: dict) -> Embed:
-
         """
         Prepares a message for embedding.
         """
@@ -95,7 +92,6 @@ class Meta(Cog):
 
     @command(name='ask')
     async def ask(self, ctx: Context) -> None:
-
         """
         Creates a question.
         """
@@ -198,29 +194,25 @@ class Meta(Cog):
         return embed
 
 
-    @command(name='view-question') 
+    @command(name='view-question', aliases=('question', 'view')) 
     async def view_question(self, ctx: Context, question_id: int) -> None:
-
         """
         View a question.
         """
 
         question = await self.db.find_one({'_id': question_id})
-
+        
         if question is None:
             return await ctx.send('Question not found.')
 
-
+        question['views'] += 1 
         view = QuestionView(self.db, question_id)
         embed = await self.prepare_question(question)
-
-        
 
         view.message = await ctx.send(embed=embed, view=view)
 
     @command(name='answer')
     async def answer(self, ctx: Context, question_id: int) -> None: # make question_id have a default value? button - select 25 latest
-
         """
         Answer a question.
         """
@@ -267,6 +259,24 @@ class Meta(Cog):
         await self.db.update_one({'_id': question_id}, {'$set': {'answers': question['answers']}})
 
         await ctx.send('Answer posted!')
+
+    @command(name='questions')
+    async def questions(self, ctx: Context, limit: int = 10):
+        """
+        View the latest questions.
+        """
+        
+        message = f'Latest Questions\n'
+
+        data = await self.db.find().to_list(10)
+
+        for index, result in enumerate(data):
+            if len(result['title']) > 50:
+                result['title'] = result['title'][:50] + f"..."
+
+            message += f"\n{index+1}. {result['title']} (ID: {result['_id']})"
+            
+        await ctx.send(f'```\n{message}\n```')
 
 
 async def setup(bot: StackBot) -> None:
