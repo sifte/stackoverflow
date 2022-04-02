@@ -23,21 +23,16 @@ class Meta(Cog):
 
     @property
     def db(self) -> AsyncIOMotorCollection:
-        return self.bot.db['TESTING']['1'] # change to ['stackoverflow']['meta']
+        return self.bot.db['stackoverflow']['main'] # change to ['stackoverflow']['meta']
 
     @property
     def user_db(self) -> AsyncIOMotorCollection:
-        return self.bot.db['TESTING']['user'] # change to ['stackoverflow']['users']
+        return self.bot.db['stackoverflow']['users'] # change to ['stackoverflow']['users']
 
     async def ensure_user_exists(self, user_id: int) -> None:
 
         """
         Ensure that a user exists in the database.
-
-        Parameters
-        ----------
-        user_id : int
-            The user's ID.
         """
         
         user = await self.user_db.find_one({'_id': user_id})
@@ -50,7 +45,7 @@ class Meta(Cog):
                 'questions_answered': [], 
             }
             await self.user_db.insert_one(payload)
-            return
+            return payload
 
         else:
             return user
@@ -58,14 +53,7 @@ class Meta(Cog):
     async def post_question(self, user_id: int, data: dict) -> None:
 
         """
-        Post a question.
-
-        Parameters
-        ----------
-        user_id : int
-            The user id of the user who asked the question.
-        data : dict
-            The data to be posted.
+        Posts a question.
         """
 
         user = await self.ensure_user_exists(user_id) # ensure the user exists
@@ -94,14 +82,7 @@ class Meta(Cog):
     async def prepare_message(self, ctx: Context, data: dict) -> Embed:
 
         """
-        Prepare a message for embedding.
-
-        Parameters
-        ----------
-        ctx : Context
-            The context of the command.
-        data : dict
-            The data to be prepared.
+        Prepares a message for embedding.
         """
 
         embed = Embed(
@@ -116,7 +97,7 @@ class Meta(Cog):
     async def ask(self, ctx: Context) -> None:
 
         """
-        Ask a question.
+        Creates a question.
         """
         
         def check(message: Message) -> bool:
@@ -188,12 +169,7 @@ class Meta(Cog):
     async def prepare_question(self, question: dict) -> Embed:
 
         """
-        Prepare a question for embedding.
-        
-        Parameters
-        ----------
-        question : dict
-            The question to be prepared.
+        Prepares a question for embedding.
         """
 
         user = self.bot.get_user(question['user_id']) or await self.bot.get_user(question['user_id'])
